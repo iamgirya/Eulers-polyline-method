@@ -1,103 +1,97 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Data;
 using System.Drawing;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 using System.Windows.Forms;
 using ZedGraph;
 
-namespace ZadachiKashi
+namespace metodEiler
 {
-    //Метод Рунге-Кутта
     public partial class Form1 : Form
     {
-        double xo, yo, e;
+        double n, e;
+        // условия Каши и задание отрезка
+        const double x0=0, y0=1, minX = 0, maxX = 1;
+        // дифференциальное уравнение
         static public double f(double x, double y)
         {
-            return 2*x +y;
-            //return Math.Sin(x);
+            return Math.Exp(2 * x) * (2 + 3 * Math.Cos(x)) / (2 * y) - 3 * y * Math.Cos(x) / 2;
         }
+        //точное решение задачи Каши
         static public double realF(double x)
         {
-            return -2 * (x + 1) + Math.Exp(x)*4;
-            //return -Math.Cos(x);
+            return Math.Exp(x);
         }
-
+        // метод очистки и настройки координатной плоскости
         private void Clear(ZedGraphControl Zed_GraphControl)
         {
             zedGraphControl1.GraphPane.CurveList.Clear();
             zedGraphControl1.GraphPane.GraphObjList.Clear();
-
             zedGraphControl1.GraphPane.XAxis.Type = AxisType.Linear;
             zedGraphControl1.GraphPane.XAxis.Scale.TextLabels = null;
             zedGraphControl1.GraphPane.XAxis.MajorGrid.IsVisible = false;
             zedGraphControl1.GraphPane.YAxis.MajorGrid.IsVisible = false;
             zedGraphControl1.GraphPane.YAxis.MinorGrid.IsVisible = false;
             zedGraphControl1.GraphPane.XAxis.MinorGrid.IsVisible = false;
+            zedGraphControl1.GraphPane.XAxis.Title.IsVisible = false;
+            zedGraphControl1.GraphPane.YAxis.Title.IsVisible = false;
+            zedGraphControl1.GraphPane.Title.IsVisible = false;
             zedGraphControl1.RestoreScale(zedGraphControl1.GraphPane);
-
             zedGraphControl1.AxisChange();
             zedGraphControl1.Invalidate();
         }
-
+        // построение графиков
         public void build(ZedGraphControl Zed_GraphControl)
         {
 
             PointPairList list = new PointPairList();
             PointPairList reallist = new PointPairList();
 
-            double h, x=xo, y=yo;
-            long n = (long)((50-xo)/e) + 1;
-            h = (50 - xo) / n;
-
-            while (x < 50+h/2)
+            double h, h1, x=x0, y=y0;
+            double nowE, maxE = 0;
+            h = (maxX - minX) / (n-1);
+            h1 = (double)(maxX - minX) / 1000D;
+            // нахождение точек точной функции
+            while (x < x0+h1*1000D)
             {
-                if (x > 0)
-                {
-                    list.Add(x, y);
-                    reallist.Add(x, realF(x));
-                }
+                reallist.Add(x, realF(x));
+                x += h1;
+            }
+            // нахождение точек приближённой функции
+            x = x0;
+            while (x < x0 + h * n)
+            {
+                list.Add(x, y);
+                // вычисление максимальной невязки
+                nowE = Math.Abs(y - realF(x));
+                if (nowE > maxE)
+                    maxE = nowE;
 
-                double k1 = f(x, y);
-                double k2 = f(x + h/2, y+k1*h/2);
-                double k3 = f(x + h / 2, y + k2 * h / 2);
-                double k4 = f(x + h , y + k3 * h);
-
-                y = y + h / 6 * (k1 + 2 * k2 + 2 * k3 + k4);
-                x = x + h;
+                y += h * f(x, y);
+                x += h;
             }
 
+            textBox3.Text = Convert.ToString(maxE);
+            // отрисовка графиков функций
             GraphPane my_Pane = Zed_GraphControl.GraphPane;
-            LineItem myCircle = my_Pane.AddCurve("Pribl", list, Color.Blue, SymbolType.Circle);
-            LineItem myCircle2 = my_Pane.AddCurve("Func", reallist, Color.Green, SymbolType.Square);
+            LineItem myCircle = my_Pane.AddCurve("Приближённое решение", list, Color.Blue, SymbolType.None);
+            LineItem myCircle2 = my_Pane.AddCurve("Точное решение", reallist, Color.Green, SymbolType.None);
             zedGraphControl1.AxisChange();
             zedGraphControl1.Invalidate();
-
         }
-
         public Form1()
         {
             InitializeComponent();
+            Clear(zedGraphControl1);
         }
-
+        // при нажатии на кнопку расчёт
         private void button1_Click(object sender, EventArgs ee)
         {
-            if (textBox1.Text != "" && textBox4.Text != "" && textBox6.Text != "")
-            {
+            if (textBox6.Text != "")
                 try
-                {
-                    xo = Convert.ToDouble(textBox1.Text);
-                    yo = Convert.ToDouble(textBox4.Text);
-                    e = Convert.ToDouble(textBox6.Text);
-                }
+                { n = Convert.ToDouble(textBox6.Text); }
                 catch { return; }
                 Clear(zedGraphControl1);
-                build(zedGraphControl1);
-                
-            }
+                build(zedGraphControl1);      
         }
     }
 }
